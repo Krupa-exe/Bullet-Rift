@@ -34,7 +34,7 @@ class Player {
     const s = {
       dmgMult: 1, critChance: 0.05, critMult: 1.75, cdMult: 1, areaMult: 1, speedMult: 1,
       amount: 0, pickupRange: 100, armor: c.armor, maxHp: c.hp, regen: c.regen,
-      lifeOnKill: 0, goldMult: 1, thorns: 0, projSpeed: 1,
+      lifeOnKill: 0, goldMult: 1, thorns: 0, projSpeed: 1, burn: 0, mejai: false,
     };
     c.applyPassive(s);
     for (const k of this.itemOrder) ITEMS[k].apply(s, this.items[k]);
@@ -90,7 +90,15 @@ const Game = {
     this.canvas.height = Math.floor(this.h * this.dpr);
     this.canvas.style.width = this.w + 'px';
     this.canvas.style.height = this.h + 'px';
-    this.zoom = clamp(Math.min(this.w, this.h) / 760, 0.55, 1.25);
+    // Pixel art: o mundo é desenhado em um canvas de baixa resolução e ampliado
+    // por um fator inteiro (P pixels do dispositivo por pixel de arte).
+    const baseZoom = clamp(Math.min(this.w, this.h) / 760, 0.6, 1.25);
+    this.pix = Math.max(2, Math.round(ART * baseZoom * this.dpr * 1.3));
+    this.zoom = this.pix / (ART * this.dpr);
+    if (!this.low) this.low = document.createElement('canvas');
+    this.low.width = Math.ceil(this.canvas.width / this.pix);
+    this.low.height = Math.ceil(this.canvas.height / this.pix);
+    this.lctx = this.low.getContext('2d');
   },
 
   // -------------------------------------------------------------------------
@@ -122,6 +130,9 @@ const Game = {
     this.magnetAll = false;
     this.damageTaken = 0;
     this.ultSource = { key: 'ult', dmgDone: 0 };
+    this.burnSource = { key: 'burn', dmgDone: 0 };
+    this.burnT = 0;
+    this.notified = new Set();
     this.cam = { x: 0, y: 0 };
     this.addWeapon(this.player.champ.startWeapon);
     this.state = 'playing';
@@ -193,6 +204,14 @@ const Game = {
     for (const e of this.enemies) this.grid.insert(e);
 
     for (const w of p.weapons) WEAPONS[w.key].update(w, this, dt);
+    if (p.stats.burn > 0) {
+      this.burnT -= dt;
+      if (this.burnT <= 0) {
+        this.burnT = 0.5;
+        const R = SUNFIRE_RADIUS * p.stats.areaMult;
+        this.forEnemiesInRadius(p.x, p.y, R, (e) => this.damageEnemy(e, p.stats.burn * 0.5, { src: this.burnSource, noCrit: true }));
+      }
+    }
 
     this.updateProjectiles(dt);
     this.updateEnemies(dt);
@@ -451,6 +470,7 @@ const Game = {
     const st = p.stats;
     let dmg = base * st.dmgMult;
     if (p.baronT > 0) dmg *= 1.4;
+    if (st.mejai) dmg *= 1 + Math.min(0.6, this.kills / 4000);
     let crit = false;
     if (!opts.noCrit && Math.random() < st.critChance) { dmg *= st.critMult; crit = true; }
     e.hp -= dmg;
@@ -499,9 +519,9 @@ const Game = {
     this.burst(e.x, e.y, d.color, d.boss ? 40 : d.elite ? 20 : 5, d.boss ? 260 : 120);
 
     this.dropXp(e.x, e.y, Math.round(d.xp * (1 + this.time / 500)));
-    if (Math.random() < 0.06 || d.gold) {
+    if (Math.random() < 0.08 || d.gold) {
       const n = d.gold ? Math.min(12, Math.ceil(d.gold / 3)) : 1;
-      const per = d.gold ? d.gold / n : randInt(1, 3);
+      const per = (d.gold ? d.gold / n : randInt(1, 3)) * (1 + this.time / 240);
       for (let i = 0; i < n; i++) this.addPickup('gold', e.x + rand(-20, 20), e.y + rand(-20, 20), per);
     }
     if (Math.random() < 0.004) this.addPickup('heal', e.x, e.y, 30);
@@ -877,7 +897,7 @@ const Game = {
     }
     if (p.itemOrder.length < 6) {
       for (const key in ITEMS) {
-        if (!p.items[key]) opts.push({ type: 'item', key, level: 1, weight: 2 });
+        if (!p.items[key] && !ITEMS[key].fusion && !this.lockedByFusion(key)) opts.push({ type: 'item', key, level: 1, weight: 2 });
       }
     }
     return opts;
@@ -919,6 +939,7 @@ const Game = {
     } else if (opt.type === 'heal') {
       p.hp = Math.min(p.stats.maxHp, p.hp + p.stats.maxHp * 0.5);
     }
+    this.checkRecipes();
   },
 
   reroll() {
@@ -945,6 +966,140 @@ const Game = {
     const bonusGold = randInt(10, 30) * count;
     this.gold += bonusGold;
     return { rewards, gold: bonusGold };
+  },
+
+  // -------------------------------------------------------------------------
+  // Loja: comprar, melhorar, vender, fundir itens e evoluir habilidades
+  // -------------------------------------------------------------------------
+  lockedByFusion(key) {
+    const p = this.player;
+    return p.itemOrder.some((k) => ITEMS[k].fusion && ITEMS[k].fusion.includes(key));
+  },
+
+  // O jogador tem o efeito do item, seja o item em si ou uma fusão que o contém.
+  hasItemEffect(key) {
+    return !!this.player.items[key] || this.lockedByFusion(key);
+  },
+
+  evolveStatus(w) {
+    const def = WEAPONS[w.key];
+    if (!def.evo || w.evolved) return 'done';
+    if (w.level < def.maxLevel) return 'level';
+    if (!this.hasItemEffect(def.evo.item)) return 'item';
+    return this.gold >= SHOP.evolve ? 'ready' : 'gold';
+  },
+
+  fusionStatus(fkey) {
+    const p = this.player;
+    const [a, b] = ITEMS[fkey].fusion;
+    if (p.items[fkey]) return 'done';
+    if (!(p.items[a] >= ITEMS[a].maxLevel && p.items[b] >= ITEMS[b].maxLevel)) return 'items';
+    return this.gold >= SHOP.fusion ? 'ready' : 'gold';
+  },
+
+  spend(cost) {
+    if (this.gold < cost) return false;
+    this.gold -= cost;
+    Sfx.play('gold');
+    return true;
+  },
+
+  evolveWeapon(key) {
+    const w = this.player.weapons.find((x) => x.key === key);
+    if (!w || this.evolveStatus(w) !== 'ready' || !this.spend(SHOP.evolve)) return false;
+    w.evolved = true;
+    Sfx.play('levelup');
+    this.announce(`${WEAPONS[key].evo.name}!`, '#f5d067');
+    return true;
+  },
+
+  fuseItems(fkey) {
+    const p = this.player;
+    if (this.fusionStatus(fkey) !== 'ready' || !this.spend(SHOP.fusion)) return false;
+    const [a, b] = ITEMS[fkey].fusion;
+    const idx = Math.min(p.itemOrder.indexOf(a), p.itemOrder.indexOf(b));
+    p.itemOrder = p.itemOrder.filter((k) => k !== a && k !== b);
+    delete p.items[a];
+    delete p.items[b];
+    p.itemOrder.splice(idx, 0, fkey);
+    p.items[fkey] = 1;
+    p.recalc();
+    Sfx.play('chest');
+    this.announce(`${ITEMS[fkey].name} forjado!`, '#f5d067');
+    this.checkRecipes();
+    return true;
+  },
+
+  buyItem(key) {
+    const p = this.player;
+    if (p.items[key] || ITEMS[key].fusion || this.lockedByFusion(key) || p.itemOrder.length >= 6) return false;
+    if (!this.spend(SHOP.buyItem)) return false;
+    this.applyUpgrade({ type: 'item', key, level: 1 });
+    return true;
+  },
+
+  upgradeItem(key) {
+    const p = this.player;
+    const lvl = p.items[key];
+    if (!lvl || lvl >= ITEMS[key].maxLevel || !this.spend(SHOP.upgradeItem(lvl))) return false;
+    this.applyUpgrade({ type: 'item', key, level: lvl + 1 });
+    return true;
+  },
+
+  sellItem(key) {
+    const p = this.player;
+    const lvl = p.items[key];
+    if (!lvl) return false;
+    this.gold += ITEMS[key].fusion ? SHOP.sellFusion : SHOP.sellItem(lvl);
+    delete p.items[key];
+    p.itemOrder = p.itemOrder.filter((k) => k !== key);
+    p.recalc();
+    Sfx.play('gold');
+    return true;
+  },
+
+  sellWeapon(key) {
+    const p = this.player;
+    if (p.weapons.length <= 1) return false;
+    const w = p.weapons.find((x) => x.key === key);
+    if (!w) return false;
+    this.gold += SHOP.sellWeapon(w);
+    p.weapons = p.weapons.filter((x) => x !== w);
+    Sfx.play('gold');
+    return true;
+  },
+
+  // Avisa (uma vez) quando uma evolução ou fusão fica disponível.
+  checkRecipes() {
+    const p = this.player;
+    for (const w of p.weapons) {
+      const st = this.evolveStatus(w);
+      if ((st === 'ready' || st === 'gold') && !this.notified.has('w:' + w.key)) {
+        this.notified.add('w:' + w.key);
+        this.announce(`Evolução disponível: ${WEAPONS[w.key].evo.name} (loja: B)`, '#f5d067');
+      }
+    }
+    for (const k in ITEMS) {
+      if (!ITEMS[k].fusion) continue;
+      const st = this.fusionStatus(k);
+      if ((st === 'ready' || st === 'gold') && !this.notified.has('f:' + k)) {
+        this.notified.add('f:' + k);
+        this.announce(`Fusão disponível: ${ITEMS[k].name} (loja: B)`, '#f5d067');
+      }
+    }
+  },
+
+  openOverlay(kind) {
+    if (this.state !== 'playing') return;
+    this.state = kind;
+    if (kind === 'shop') UI.showShop();
+    else UI.showStatus();
+  },
+
+  closeOverlay() {
+    if (this.state !== 'shop' && this.state !== 'status' && this.state !== 'paused') return;
+    this.state = 'playing';
+    UI.hideScreens();
   },
 
   // -------------------------------------------------------------------------
@@ -975,36 +1130,80 @@ const Game = {
   // -------------------------------------------------------------------------
   render() {
     const ctx = this.ctx;
+    const lc = this.lctx;
     const dpr = this.dpr;
+    const P = this.pix;
+    const lw = this.low.width, lh = this.low.height;
+    const ox = Math.floor(lw / 2), oy = Math.floor(lh / 2);
+    lc.imageSmoothingEnabled = false;
+
+    let camX, camY;
+    if (this.state === 'menu' || !this.player) {
+      camX = Math.cos(this.menuT * 0.1) * 400;
+      camY = this.menuT * 30;
+    } else {
+      const sx = this.shake > 0 ? rand(-this.shake, this.shake) * 0.5 : 0;
+      const sy = this.shake > 0 ? rand(-this.shake, this.shake) * 0.5 : 0;
+      camX = this.cam.x + sx;
+      camY = this.cam.y + sy;
+    }
+    camX = Math.round(camX / ART) * ART;
+    camY = Math.round(camY / ART) * ART;
+    lc.setTransform(1 / ART, 0, 0, 1 / ART, ox - camX / ART, oy - camY / ART);
+    const v = this.viewHalf();
+    const x0 = camX - v.w - 60, x1 = camX + v.w + 60, y0 = camY - v.h - 60, y1 = camY + v.h + 60;
+
+    drawBackground(lc, x0, y0, x1, y1);
+    if (this.state !== 'menu' && this.player) this.renderWorld(lc, camX, camY, x0, x1, y0, y1, v);
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.low, 0, 0, lw * P, lh * P);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     if (this.state === 'menu' || !this.player) {
-      const cx = Math.cos(this.menuT * 0.1) * 400, cy = this.menuT * 30;
-      this.applyCamera(cx, cy);
-      const v = this.viewHalf();
-      drawBackground(ctx, cx - v.w - 100, cy - v.h - 100, cx + v.w + 100, cy + v.h + 100);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.fillStyle = 'rgba(1,10,19,0.55)';
       ctx.fillRect(0, 0, this.w, this.h);
       return;
     }
 
+    // Números de dano (texto nítido em fonte pixelada, sobre o mundo ampliado)
+    const toSX = (wx) => ((wx - camX) / ART + ox) * P / dpr;
+    const toSY = (wy) => ((wy - camY) / ART + oy) * P / dpr;
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    for (const t of this.texts) {
+      ctx.globalAlpha = Math.min(1, t.life * 2.5);
+      const size = t.crit ? 24 : t.hurt ? 21 : 17;
+      ctx.font = `${size}px VT323, monospace`;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = OUTLINE;
+      ctx.fillStyle = t.color || (t.hurt ? '#ff4d4d' : t.crit ? '#ffb347' : '#ffffff');
+      const sx = Math.round(toSX(t.x)), sy = Math.round(toSY(t.y));
+      ctx.strokeText(t.text, sx, sy);
+      ctx.fillText(t.text, sx, sy);
+    }
+    ctx.globalAlpha = 1;
+    HUD.draw(ctx, this);
+  },
+
+  renderWorld(ctx, camX, camY, x0, x1, y0, y1, v) {
     const p = this.player;
-    const sx = this.shake > 0 ? rand(-this.shake, this.shake) * 0.5 : 0;
-    const sy = this.shake > 0 ? rand(-this.shake, this.shake) * 0.5 : 0;
-    const camX = this.cam.x + sx, camY = this.cam.y + sy;
-    this.applyCamera(camX, camY);
-    const v = this.viewHalf();
-    const x0 = camX - v.w - 60, x1 = camX + v.w + 60, y0 = camY - v.h - 60, y1 = camY + v.h + 60;
     const inView = (o, m = 40) => o.x > x0 - m && o.x < x1 + m && o.y > y0 - m && o.y < y1 + m;
 
-    drawBackground(ctx, x0, y0, x1, y1);
-
     for (const w of p.weapons) if (WEAPONS[w.key].drawGround) WEAPONS[w.key].drawGround(w, this, ctx);
+    if (p.stats.burn > 0) {
+      const R = SUNFIRE_RADIUS * p.stats.areaMult;
+      ctx.save();
+      ctx.globalAlpha = 0.12 + 0.04 * (Math.floor(this.time * 6) & 1);
+      ctx.fillStyle = '#ff7a2a';
+      ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
     for (const pk of this.pickups) if (inView(pk)) drawPickup(ctx, pk, this.time);
 
     // Inimigos (chefes por cima)
-    for (const e of this.enemies) if (!e.def.boss && inView(e, e.r)) drawEnemy(ctx, e, this.time);
+    for (const e of this.enemies) if (!e.def.boss && inView(e, e.r * 2)) drawEnemy(ctx, e, this.time);
     for (const e of this.enemies) if (e.def.boss) drawEnemy(ctx, e, this.time);
 
     for (const w of p.weapons) if (WEAPONS[w.key].draw) WEAPONS[w.key].draw(w, this, ctx);
@@ -1012,7 +1211,7 @@ const Game = {
     // Jogador
     if (p.baronT > 0 || p.elderT > 0) {
       ctx.save();
-      ctx.globalAlpha = 0.3 + 0.1 * Math.sin(this.time * 6);
+      ctx.globalAlpha = 0.25 + 0.1 * (Math.floor(this.time * 4) & 1);
       ctx.fillStyle = p.baronT > 0 ? '#b46bff' : '#7fe8ff';
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 10, 0, TAU); ctx.fill();
       ctx.restore();
@@ -1020,14 +1219,17 @@ const Game = {
     const blink = p.invuln > 0 && Math.floor(this.time * 20) % 2 === 0;
     if (!blink) drawChampion(ctx, p.key, p.x, p.y, p.r, p.facing, this.time, p.moving);
     if (p.hurtT > 0) {
-      ctx.save(); ctx.globalAlpha = p.hurtT * 3; ctx.fillStyle = '#ff3030';
+      ctx.save(); ctx.globalAlpha = Math.min(0.6, p.hurtT * 3); ctx.fillStyle = '#ff3030';
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 2, 0, TAU); ctx.fill(); ctx.restore();
     }
     // Barra de vida sob o jogador
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(p.x - 20, p.y + p.r + 8, 40, 5);
+    const bx = Math.round(p.x / ART) * ART - 20, by = Math.round(p.y / ART) * ART + p.r + 8;
+    ctx.fillStyle = OUTLINE;
+    ctx.fillRect(bx - ART, by - ART, 40 + ART * 2, ART * 4);
+    ctx.fillStyle = '#5a1a1a';
+    ctx.fillRect(bx, by, 40, ART * 2);
     ctx.fillStyle = '#4ee36a';
-    ctx.fillRect(p.x - 20, p.y + p.r + 8, (40 * p.hp) / p.stats.maxHp, 5);
+    ctx.fillRect(bx, by, Math.round((20 * Math.max(0, p.hp)) / p.stats.maxHp) * ART, ART * 2);
 
     for (const pr of this.projectiles) if (inView(pr)) drawProjectile(ctx, pr, this.time);
     for (const b of this.enemyProjectiles) if (inView(b)) drawEnemyProjectile(ctx, b);
@@ -1035,20 +1237,7 @@ const Game = {
     for (const pt of this.particles) {
       ctx.globalAlpha = Math.max(0, pt.life / pt.max);
       ctx.fillStyle = pt.color;
-      ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
-    }
-    ctx.globalAlpha = 1;
-
-    // Números de dano
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(0,0,0,0.7)';
-    for (const t of this.texts) {
-      ctx.globalAlpha = Math.min(1, t.life * 2.5);
-      ctx.font = t.crit ? 'bold 17px system-ui, sans-serif' : t.hurt ? 'bold 15px system-ui, sans-serif' : '12px system-ui, sans-serif';
-      ctx.fillStyle = t.color || (t.hurt ? '#ff4d4d' : t.crit ? '#ffb347' : '#ffffff');
-      ctx.strokeText(t.text, t.x, t.y);
-      ctx.fillText(t.text, t.x, t.y);
+      ctx.fillRect(Math.round(pt.x / ART) * ART, Math.round(pt.y / ART) * ART, ART * (pt.size > 3 ? 2 : 1), ART * (pt.size > 3 ? 2 : 1));
     }
     ctx.globalAlpha = 1;
 
@@ -1064,14 +1253,6 @@ const Game = {
       ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.fill();
       ctx.restore();
     }
-
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    HUD.draw(ctx, this);
-  },
-
-  applyCamera(cx, cy) {
-    const k = this.dpr * this.zoom;
-    this.ctx.setTransform(k, 0, 0, k, this.dpr * this.w / 2 - k * cx, this.dpr * this.h / 2 - k * cy);
   },
 };
 

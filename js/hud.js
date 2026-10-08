@@ -17,7 +17,7 @@ const HUD = {
     ctx.strokeStyle = '#785a28';
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, W - 2, 14);
-    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.font = '14px VT323, monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#f0e6d2';
     ctx.fillText(`NV ${p.level}`, 8, 12);
@@ -29,7 +29,7 @@ const HUD = {
 
     // Tempo
     ctx.textAlign = 'center';
-    ctx.font = `bold ${small ? 22 : 28}px Cinzel, Georgia, serif`;
+    ctx.font = `${small ? 16 : 22}px "Press Start 2P", monospace`;
     ctx.fillStyle = '#f0e6d2';
     ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.lineWidth = 4;
@@ -37,14 +37,14 @@ const HUD = {
     ctx.strokeText(timeText, W / 2, topY + (small ? 22 : 48));
     ctx.fillText(timeText, W / 2, topY + (small ? 22 : 48));
     if (!g.endless) {
-      ctx.font = '11px system-ui, sans-serif';
+      ctx.font = '14px VT323, monospace';
       ctx.fillStyle = '#a09b8c';
       ctx.fillText(`Sobreviva até ${formatTime(VICTORY_TIME)}`, W / 2, topY + (small ? 36 : 63));
     }
 
     // Abates e ouro
     ctx.textAlign = 'right';
-    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.font = '20px VT323, monospace';
     ctx.lineWidth = 3;
     const killText = `☠ ${g.kills}`;
     const goldText = `🪙 ${g.gold}`;
@@ -60,22 +60,28 @@ const HUD = {
         ctx.fillRect(x, y, S, S);
         ctx.strokeStyle = row === 0 ? '#0ac8b9' : '#c8aa6e';
         ctx.globalAlpha = 0.6;
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(x + 0.5, y + 0.5, S - 1, S - 1);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, S - 2, S - 2);
         ctx.globalAlpha = 1;
-        let icon = null, lvl = 0, max = 0;
+        let icon = null, lvl = 0, max = 0, special = false;
         if (row === 0 && p.weapons[i]) {
           const w = p.weapons[i];
-          icon = WEAPONS[w.key].icon; lvl = w.level; max = WEAPONS[w.key].maxLevel;
+          icon = WEAPONS[w.key].icon; lvl = w.level; max = WEAPONS[w.key].maxLevel; special = w.evolved;
         } else if (row === 1 && p.itemOrder[i]) {
           const k = p.itemOrder[i];
-          icon = ITEMS[k].icon; lvl = p.items[k]; max = ITEMS[k].maxLevel;
+          icon = ITEMS[k].icon; lvl = p.items[k]; max = ITEMS[k].maxLevel; special = !!ITEMS[k].fusion;
         }
         if (icon) {
-          ctx.textAlign = 'center';
-          ctx.font = `${Math.floor(S * 0.55)}px system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-          ctx.fillStyle = '#fff';
-          ctx.fillText(icon, x + S / 2, y + S * 0.62);
+          if (special) {
+            ctx.fillStyle = 'rgba(245,208,103,0.25)';
+            ctx.fillRect(x, y, S, S);
+            ctx.strokeStyle = '#f5d067';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 1, y + 1, S - 2, S - 2);
+          }
+          ctx.imageSmoothingEnabled = false;
+          const isz = S - 6;
+          ctx.drawImage(Icons.get(icon), x + 3, y + 1, isz, isz);
           for (let k = 0; k < max; k++) {
             ctx.fillStyle = k < lvl ? '#f5d067' : 'rgba(255,255,255,0.2)';
             ctx.fillRect(x + 3 + k * ((S - 6) / max), y + S - 5, (S - 6) / max - 1.5, 3);
@@ -88,7 +94,7 @@ const HUD = {
     // Buffs ativos
     let by = small ? topY + 76 : y + 6;
     ctx.textAlign = 'left';
-    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.font = '16px VT323, monospace';
     const buffs = [];
     if (p.baronT > 0) buffs.push([`Mão do Barão ${Math.ceil(p.baronT)}s`, '#d78aff']);
     if (p.elderT > 0) buffs.push([`Ancião ${Math.ceil(p.elderT)}s`, '#9ff']);
@@ -114,10 +120,10 @@ const HUD = {
       ctx.fillStyle = boss.def.elder ? '#3fc8bf' : '#b43bff';
       ctx.fillRect(bx, byy, (bw * Math.max(0, boss.hp)) / boss.maxHp, 12);
       ctx.strokeStyle = '#c8aa6e';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.strokeRect(bx - 2, byy - 2, bw + 4, 16);
       ctx.textAlign = 'center';
-      ctx.font = 'bold 12px Cinzel, Georgia, serif';
+      ctx.font = '10px "Press Start 2P", monospace';
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#000';
       ctx.strokeText(boss.def.name, W / 2, byy + 27);
@@ -131,7 +137,7 @@ const HUD = {
     for (const a of g.announcements) {
       const alpha = Math.min(1, a.life * 1.5, (a.max - a.life) * 6);
       ctx.globalAlpha = alpha;
-      ctx.font = `bold ${small ? 17 : 24}px Cinzel, Georgia, serif`;
+      ctx.font = `${small ? 21 : 31}px VT323, monospace`;
       ctx.lineWidth = 5;
       ctx.strokeStyle = 'rgba(0,0,0,0.8)';
       ctx.strokeText(a.text, W / 2, ay);
@@ -155,9 +161,9 @@ const HUD = {
     ctx.fillStyle = hpG;
     ctx.fillRect(hx, hy, (hw * Math.max(0, p.hp)) / p.stats.maxHp, 16);
     ctx.strokeStyle = '#c8aa6e';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.strokeRect(hx - 3, hy - 3, hw + 6, 22);
-    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.font = '16px VT323, monospace';
     ctx.fillStyle = '#fff';
     ctx.fillText(`${Math.ceil(p.hp)} / ${Math.round(p.stats.maxHp)}`, W / 2, hy + 12.5);
 
@@ -183,9 +189,9 @@ const HUD = {
 
     if (Sfx.muted) {
       ctx.textAlign = 'right';
-      ctx.font = '12px system-ui, sans-serif';
+      ctx.font = '16px VT323, monospace';
       ctx.fillStyle = '#a09b8c';
-      ctx.fillText('🔇 mudo (M)', W - 12, 80);
+      ctx.fillText('🔇 mudo (M)', W - 12, 124);
     }
   },
 
@@ -193,9 +199,8 @@ const HUD = {
     ctx.fillStyle = 'rgba(1,10,19,0.85)';
     ctx.fillRect(x, y, s, s);
     ctx.textAlign = 'center';
-    ctx.font = `${Math.floor(s * 0.55)}px system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-    ctx.fillStyle = '#fff';
-    ctx.fillText(icon, x + s / 2, y + s * 0.68);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(Icons.get(icon), x + 4, y + 4, s - 8, s - 8);
     if (cd > 0) {
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       ctx.beginPath();
@@ -205,7 +210,7 @@ const HUD = {
       ctx.save(); ctx.beginPath(); ctx.rect(x, y, s, s); ctx.clip();
       ctx.fill();
       ctx.restore();
-      ctx.font = 'bold 14px system-ui, sans-serif';
+      ctx.font = '18px VT323, monospace';
       ctx.fillStyle = '#fff';
       ctx.fillText(Math.ceil(cd), x + s / 2, y + s / 2 + 5);
     }
@@ -213,7 +218,7 @@ const HUD = {
     ctx.lineWidth = 2;
     ctx.strokeRect(x, y, s, s);
     if (key) {
-      ctx.font = '10px system-ui, sans-serif';
+      ctx.font = '13px VT323, monospace';
       ctx.fillStyle = '#c8aa6e';
       ctx.fillText(key, x + s / 2, y + s + 11);
     }

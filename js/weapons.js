@@ -4,8 +4,18 @@
 const WEAPONS = {};
 
 function wstat(w, k) {
-  const a = WEAPONS[w.key].stats[k];
-  return a[Math.min(w.level, a.length) - 1];
+  const def = WEAPONS[w.key];
+  const a = def.stats[k];
+  let v = a[Math.min(w.level, a.length) - 1];
+  if (w.evolved && def.evo) {
+    if (def.evo.mult && def.evo.mult[k]) v *= def.evo.mult[k];
+    if (def.evo.add && def.evo.add[k]) v += def.evo.add[k];
+  }
+  return v;
+}
+
+function weaponName(w) {
+  return w.evolved ? WEAPONS[w.key].evo.name : WEAPONS[w.key].name;
 }
 
 function cooldownReady(w, g, dt, baseCd) {
@@ -17,6 +27,7 @@ function cooldownReady(w, g, dt, baseCd) {
 
 // --- Garen: Julgamento -----------------------------------------------------
 WEAPONS.judgment = {
+  evo: { name: 'Julgamento Implacável', item: 'thornmail', mult: { dmg: 1.8, radius: 1.25 }, add: { blades: 1, spin: 2 }, desc: 'Quatro lâminas maiores giram com muito mais força.' },
   name: 'Julgamento', champ: 'Garen', icon: '⚔️', color: '#f2c94c', maxLevel: 5,
   desc: 'Gira a espada ao seu redor causando dano contínuo.',
   levelDesc: ['', '+30% de dano', '+15% de área', '+30% de dano', '+1 lâmina, gira mais rápido e +20% de área'],
@@ -66,6 +77,7 @@ WEAPONS.judgment = {
 
 // --- Ashe: Rajada ----------------------------------------------------------
 WEAPONS.volley = {
+  evo: { name: 'Saraivada Glacial', item: 'infinityEdge', mult: { dmg: 1.5 }, add: { arrows: 4, pierce: 2 }, desc: 'Muito mais flechas, que perfuram vários inimigos.' },
   name: 'Rajada', champ: 'Ashe', icon: '🏹', color: '#9be7ff', maxLevel: 5,
   desc: 'Dispara um leque de flechas que desaceleram os inimigos.',
   levelDesc: ['', '+1 flecha', '+25% de dano', '+1 flecha e recarga menor', '+2 flechas e perfuram 1 inimigo'],
@@ -94,6 +106,7 @@ WEAPONS.volley = {
 
 // --- Lux: Prisão da Luz ----------------------------------------------------
 WEAPONS.lightBinding = {
+  evo: { name: 'Prisão Prismática', item: 'rabadon', mult: { dmg: 1.6 }, add: { count: 2, pierce: 5 }, desc: 'Vários raios prismáticos que atravessam fileiras de inimigos.' },
   name: 'Prisão da Luz', champ: 'Lux', icon: '✨', color: '#ffe680', maxLevel: 5,
   desc: 'Dispara um raio de luz que perfura e enraíza os primeiros inimigos atingidos.',
   levelDesc: ['', '+25% de dano', '+1 perfuração', '+1 raio extra', '+30% de dano e +2 perfurações'],
@@ -121,6 +134,7 @@ WEAPONS.lightBinding = {
 
 // --- Jinx: Foguetes do Ossos de Peixe --------------------------------------
 WEAPONS.fishbones = {
+  evo: { name: 'Barragem de Ossos de Peixe', item: 'riftmaker', mult: { dmg: 1.5, radius: 1.3, cd: 0.8 }, add: { count: 2 }, desc: 'Uma chuva de foguetes com explosões maiores.' },
   name: 'Ossos de Peixe', champ: 'Jinx', icon: '🚀', color: '#ff4fa3', maxLevel: 5,
   desc: 'Dispara foguetes que explodem causando dano em área.',
   levelDesc: ['', '+25% de dano', '+15% de raio de explosão', '+1 foguete', '+30% de dano e recarga menor'],
@@ -151,6 +165,7 @@ WEAPONS.fishbones = {
 
 // --- Lux: Singularidade Lucente --------------------------------------------
 WEAPONS.singularity = {
+  evo: { name: 'Supernova Lucente', item: 'ionian', mult: { dmg: 1.7, radius: 1.3 }, add: { count: 1 }, desc: 'Zonas maiores e mais numerosas, com explosões devastadoras.' },
   name: 'Singularidade Lucente', champ: 'Lux', icon: '🌟', color: '#fff7c2', maxLevel: 5,
   desc: 'Cria uma zona de luz que desacelera inimigos e depois detona.',
   levelDesc: ['', '+30% de dano', '+15% de área', '+12% de área e recarga menor', '+1 zona e +30% de dano'],
@@ -195,6 +210,7 @@ WEAPONS.singularity = {
 
 // --- Ahri: Orbe da Ilusão --------------------------------------------------
 WEAPONS.orb = {
+  evo: { name: 'Orbe Espiritual', item: 'nashor', mult: { dmg: 1.6, range: 1.2 }, add: { count: 2 }, desc: 'Mais orbes, com mais alcance e dano.' },
   name: 'Orbe da Ilusão', champ: 'Ahri', icon: '🔮', color: '#7ad7ff', maxLevel: 5,
   desc: 'Lança orbes que vão e voltam, atingindo os inimigos duas vezes.',
   levelDesc: ['', '+1 orbe', '+25% de dano', '+20% de alcance', '+1 orbe e +30% de dano'],
@@ -233,6 +249,7 @@ WEAPONS.orb = {
 
 // --- Lâmina Estática de Statikk --------------------------------------------
 WEAPONS.statikk = {
+  evo: { name: 'Tempestade Estática', item: 'swiftness', mult: { dmg: 1.5, cd: 0.7 }, add: { chains: 6 }, desc: 'Relâmpagos constantes que saltam por toda a tela.' },
   name: 'Lâmina Estática de Statikk', champ: 'Item', icon: '⚡', color: '#8fd3ff', maxLevel: 5,
   desc: 'Um relâmpago que salta entre vários inimigos.',
   levelDesc: ['', '+2 saltos', '+25% de dano', '+2 saltos e recarga menor', '+30% de dano e +3 saltos'],
@@ -262,6 +279,7 @@ WEAPONS.statikk = {
 
 // --- Annie: Tibbers --------------------------------------------------------
 WEAPONS.tibbers = {
+  evo: { name: 'Tibbers Enfurecido', item: 'warmog', mult: { dmg: 2, radius: 1.4, atk: 0.7, speed: 1.2 }, add: {}, desc: 'Um Tibbers gigante e furioso que esmaga multidões.' },
   name: 'Tibbers', champ: 'Annie', icon: '🧸', color: '#ff8a3d', maxLevel: 5,
   desc: 'Invoca o Tibbers, um urso flamejante que esmaga inimigos próximos.',
   levelDesc: ['', '+30% de dano', '+20% de área de golpe', 'Ataca mais rápido', '+40% de dano e anda mais rápido'],
@@ -301,7 +319,7 @@ WEAPONS.tibbers = {
   },
   draw(w, g, ctx) {
     const b = w.bear;
-    const s = 1 + (b.anim > 0 ? 0.15 : 0);
+    const s = (1 + (b.anim > 0 ? 0.15 : 0)) * (w.evolved ? 1.5 : 1);
     ctx.save();
     ctx.translate(b.x, b.y);
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -327,6 +345,7 @@ WEAPONS.tibbers = {
 
 // --- Teemo: Armadilha Venenosa ---------------------------------------------
 WEAPONS.noxiousTrap = {
+  evo: { name: 'Campo Minado de Bandópolis', item: 'ancientCoin', mult: { dmg: 1.6, radius: 1.25, cd: 0.7 }, add: { max: 6 }, desc: 'Um campo inteiro de cogumelos explosivos.' },
   name: 'Armadilha Venenosa', champ: 'Teemo', icon: '🍄', color: '#9bd64b', maxLevel: 5,
   desc: 'Planta cogumelos invisíveis que explodem e envenenam inimigos.',
   levelDesc: ['', '+1 cogumelo ativo', '+30% de dano', '+15% de área e +1 cogumelo', '+40% de dano e +2 cogumelos'],

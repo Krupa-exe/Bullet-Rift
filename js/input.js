@@ -8,7 +8,7 @@ const Input = {
   init(game) {
     window.addEventListener('keydown', (e) => {
       const k = e.key.toLowerCase();
-      if ([' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
+      if ([' ', 'tab', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault();
       const fresh = !this.keys.has(k);
       this.keys.add(k);
       if (fresh) this.onPress(game, k);
@@ -19,7 +19,7 @@ const Input = {
     const c = game.canvas;
     c.addEventListener('touchstart', (e) => {
       this.isTouch = true;
-      UI.showTouch(game.state === 'playing');
+      UI.showHudButtons(game.state === 'playing');
       for (const t of e.changedTouches) {
         if (!this.joy.active) {
           this.joy = { active: true, id: t.identifier, ox: t.clientX, oy: t.clientY, x: t.clientX, y: t.clientY };
@@ -48,6 +48,14 @@ const Input = {
         if (k === ' ' || k === 'r') game.useUlt();
         else if (k === 'f' || k === 'shift') game.useFlash();
         else if (k === 'escape' || k === 'p') game.pause();
+        else if (k === 'b') game.openOverlay('shop');
+        else if (k === 'c' || k === 'tab') game.openOverlay('status');
+        break;
+      case 'shop':
+        if (k === 'escape' || k === 'b') game.closeOverlay();
+        break;
+      case 'status':
+        if (k === 'escape' || k === 'c' || k === 'tab') game.closeOverlay();
         break;
       case 'paused':
         if (k === 'escape' || k === 'p') game.resume();

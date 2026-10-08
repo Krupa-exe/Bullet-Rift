@@ -22,6 +22,8 @@ Para publicar, basta ativar o **GitHub Pages** no repositório apontando para a 
 | Mover | `WASD` / setas | arrastar o dedo na tela |
 | Ultimate | `Espaço` / `R` | botão **R** |
 | Flash (teleporte curto) | `F` / `Shift` | botão ⚡ |
+| Loja | `B` | botão 🛒 Loja |
+| Status do personagem | `C` / `Tab` | botão 📊 Status |
 | Pausar | `Esc` / `P` | botão ❚❚ |
 | Escolher melhoria | `1` `2` `3` | toque |
 | Rerrolar melhorias (custa ouro) | `R` na tela de nível | botão |
@@ -48,6 +50,18 @@ Julgamento, Rajada, Prisão da Luz, Ossos de Peixe, Singularidade Lucente, Orbe 
 
 Gume do Infinito, Capuz da Morte de Rabadon, Armadura de Warmog, Botas da Rapidez, Botas Jônicas da Lucidez, Criafendas, Armadura de Espinhos, Furacão de Runaan, Moeda Antiga, Sedenta por Sangue e Dente de Nashor.
 
+### Loja (ouro)
+
+Abra com `B` a qualquer momento (o jogo pausa). O ouro cai dos inimigos e aumenta de valor com o tempo.
+
+- **Comprar** itens novos, **melhorar** itens e **vender** itens ou habilidades para liberar espaço.
+- **Fusões:** dois itens no nível máximo viram um item lendário que ocupa 1 espaço só (Mata-Cráquens, Tormento de Liandry, Égide de Fogo Solar, Cajado do Arcanjo, Ladrão de Almas de Mejai).
+- **Evoluções:** habilidade no nível 5 + item catalisador = versão evoluída (ex.: Ossos de Peixe + Criafendas = Barragem de Ossos de Peixe). A loja mostra todas as receitas.
+
+### Visual
+
+Pixel art: o mundo é desenhado num canvas de baixa resolução e ampliado sem suavização. Os campeões são sprites feitos à mão (`js/sprites.js`); inimigos, cenário e ícones são gerados a partir de desenhos vetoriais convertidos em pixel art com contorno.
+
 ### Inimigos e eventos
 
 - **Tropas:** corpo a corpo, mágicas (atiram), de cerco e supertropas. Ondas de tropas em formação aparecem periodicamente.
@@ -70,6 +84,7 @@ index.html        telas (menu, nível, baú, pausa, fim de jogo)
 css/style.css     visual da interface (paleta hextech dourado/azul-petróleo)
 js/utils.js       utilidades e grade espacial para colisões
 js/audio.js       efeitos sonoros sintetizados com WebAudio
+js/sprites.js     sprites em pixel art, cache e ícones pixelados
 js/data.js        campeões, itens, inimigos, ondas e eventos
 js/weapons.js     habilidades automáticas e ultimates
 js/render.js      desenho procedural de cenário, campeões, inimigos e efeitos
@@ -83,4 +98,8 @@ Para criar uma nova habilidade, adicione uma entrada em `WEAPONS` (`js/weapons.j
 
 ---
 
-*Projeto de fã, sem fins lucrativos. League of Legends e todos os nomes relacionados são marcas da Riot Games, Inc. Este projeto não é afiliado nem endossado pela Riot Games. Todos os gráficos são desenhados por código; nenhum asset oficial é usado.*
+## Aviso legal
+
+Bullet Rift foi criado sob a política "Legal Jibber Jabber" da Riot Games, usando propriedade intelectual da Riot Games. A Riot Games não endossa nem patrocina este projeto. League of Legends e Riot Games são marcas registradas da Riot Games, Inc.
+
+O projeto é gratuito e sem fins lucrativos. Todos os gráficos são originais, desenhados por código; nenhuma arte oficial (splash, ícones de itens, logotipos) é usada.

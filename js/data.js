@@ -120,6 +120,55 @@ const ITEMS = {
 };
 
 // ---------------------------------------------------------------------------
+// Fusões: dois itens no nível máximo viram um item lendário que ocupa só 1 espaço
+// e mantém os efeitos dos dois, com um bônus extra. Feitas na loja com ouro.
+// ---------------------------------------------------------------------------
+const SUNFIRE_RADIUS = 110;
+
+function applyFull(s, key) {
+  ITEMS[key].apply(s, ITEMS[key].maxLevel);
+}
+
+Object.assign(ITEMS, {
+  krakenSlayer: {
+    name: 'Mata-Cráquens', icon: '🦑', maxLevel: 1, fusion: ['infinityEdge', 'runaan'],
+    desc: 'Efeitos de Gume do Infinito e Furacão de Runaan. Bônus: +15% de dano e +25% de dano crítico.',
+    apply(s) { applyFull(s, 'infinityEdge'); applyFull(s, 'runaan'); s.dmgMult += 0.15; s.critMult += 0.25; },
+  },
+  liandry: {
+    name: 'Tormento de Liandry', icon: '🔥', maxLevel: 1, fusion: ['rabadon', 'nashor'],
+    desc: 'Efeitos de Rabadon e Dente de Nashor. Bônus: +20% de dano.',
+    apply(s) { applyFull(s, 'rabadon'); applyFull(s, 'nashor'); s.dmgMult += 0.2; },
+  },
+  sunfire: {
+    name: 'Égide de Fogo Solar', icon: '☀️', maxLevel: 1, fusion: ['warmog', 'thornmail'],
+    desc: 'Efeitos de Warmog e Armadura de Espinhos. Bônus: +50 de vida e uma aura que queima inimigos próximos.',
+    apply(s) { applyFull(s, 'warmog'); applyFull(s, 'thornmail'); s.maxHp += 50; s.burn += 30; },
+  },
+  archangel: {
+    name: 'Cajado do Arcanjo', icon: '📘', maxLevel: 1, fusion: ['ionian', 'riftmaker'],
+    desc: 'Efeitos de Botas Jônicas e Criafendas. Bônus: +15% de área e -5% de recarga.',
+    apply(s) { applyFull(s, 'ionian'); applyFull(s, 'riftmaker'); s.areaMult += 0.15; s.cdMult -= 0.05; },
+  },
+  mejai: {
+    name: 'Ladrão de Almas de Mejai', icon: '📕', maxLevel: 1, fusion: ['ancientCoin', 'bloodthirster'],
+    desc: 'Efeitos de Moeda Antiga e Sedenta por Sangue. Bônus: ganha dano a cada abate (até +60%).',
+    apply(s) { applyFull(s, 'ancientCoin'); applyFull(s, 'bloodthirster'); s.mejai = true; },
+  },
+});
+
+// Preços da loja (em ouro)
+const SHOP = {
+  buyItem: 150,                       // comprar item novo (nível 1)
+  upgradeItem: (lvl) => 60 + 40 * lvl, // melhorar item do nível lvl para lvl+1
+  sellItem: (lvl) => 20 * lvl,
+  sellFusion: 300,
+  sellWeapon: (w) => 25 * w.level + (w.evolved ? 200 : 0),
+  evolve: 500,
+  fusion: 600,
+};
+
+// ---------------------------------------------------------------------------
 // Inimigos
 // ---------------------------------------------------------------------------
 const ENEMIES = {
@@ -205,5 +254,5 @@ const KILL_MILESTONES = [
 
 function xpToNext(level) {
   if (level <= 1) return 5;
-  return Math.floor(5 + (level - 1) * 6 + Math.pow(level - 1, 1.5) * 0.9);
+  return Math.floor(5 + (level - 1) * 7 + Math.pow(level - 1, 1.5) * 1.2);
 }
