@@ -1,7 +1,5 @@
 'use strict';
 
-// World units per art pixel. Everything in the world is drawn on a grid of 2x2 world units.
-const ART = 2;
 const OUTLINE = '#140c1c';
 
 function makeCanvas(w, h) {
@@ -57,73 +55,8 @@ function crispen(c, outline = OUTLINE, bevel = false) {
   return c;
 }
 
-function whiteVersion(c) {
-  const w = makeCanvas(c.width, c.height);
-  const x = w.getContext('2d');
-  x.drawImage(c, 0, 0);
-  x.globalCompositeOperation = 'source-in';
-  x.fillStyle = '#ffffff';
-  x.fillRect(0, 0, w.width, w.height);
-  return w;
-}
-
-function spriteFromRows(rows, pal) {
-  const h = rows.length;
-  const w = Math.max(...rows.map((r) => r.length));
-  const c = makeCanvas(w, h);
-  const x = c.getContext('2d');
-  rows.forEach((row, y) => {
-    for (let i = 0; i < row.length; i++) {
-      const col = pal[row[i]];
-      if (!col) continue;
-      x.fillStyle = col;
-      x.fillRect(i, y, 1, 1);
-    }
-  });
-  return c;
-}
-
 // ---------------------------------------------------------------------------
-// Coletáveis (desenhados à mão)
-// ---------------------------------------------------------------------------
-const GEM_ROWS = ['..k..', '.kwk.', 'kwaak', 'kaaak', 'kaadk', '.kdk.', '..k..'];
-const GEM_TIERS = [
-  { a: '#4fb3ff', d: '#2a6fbf' },
-  { a: '#4ee38a', d: '#24a25a' },
-  { a: '#b26bff', d: '#7a3fd1' },
-  { a: '#ff5470', d: '#b8243f' },
-];
-const PICKUP_SPRITES = {
-  gold: {
-    pal: { k: OUTLINE, y: '#f5d067', w: '#fff6c0', d: '#c8962e' },
-    rows: ['.kkkk.', 'kwyyyk', 'kyydyk', 'kyydyk', 'kyyydk', '.kkkk.'],
-  },
-  heal: {
-    pal: { k: OUTLINE, g: '#3d7a2a', o: '#ffb23f', O: '#d9822b', w: '#ffe6a8' },
-    rows: ['....g...', '...g....', '.kkkkkk.', 'koowoook', 'koooooOk', 'koooooOk', 'kOooooOk', '.kOOOOk.', '..kkkk..'],
-  },
-  magnet: {
-    pal: { k: OUTLINE, R: '#e04848', c: '#7ad7ff', C: '#3a9fd6', w: '#ffffff' },
-    rows: ['..kkkk..', '.kRRRRk.', 'kRwcccRk', 'kRcccCRk', 'kRccCCRk', '.kRRRRk.', '..kkkkkk', '......kk'],
-  },
-  chest: {
-    pal: { k: OUTLINE, b: '#5a3a20', G: '#c8aa6e', c: '#0ac8b9' },
-    rows: [
-      '.kkkkkkkkkk.',
-      'kbbGbbbbGbbk',
-      'kbbGbbbbGbbk',
-      'kGGGGccGGGGk',
-      'kbbGbccbGbbk',
-      'kbbGbbbbGbbk',
-      'kbbGbbbbGbbk',
-      'kGGGGGGGGGGk',
-      '.kkkkkkkkkk.',
-    ],
-  },
-};
-
-// ---------------------------------------------------------------------------
-// Cache de sprites
+// Cache de imagens geradas por código
 // ---------------------------------------------------------------------------
 const Sprites = {
   cache: new Map(),
@@ -137,71 +70,34 @@ const Sprites = {
     return s;
   },
 
-  champ(key, frame) {
-    return this.get(`c:${key}:${frame}`, () => CHAMP_ART[key](frame));
-  },
-
-  // Inimigos: desenho vetorial convertido em pixel art (2 quadros + versão branca para dano).
-  enemy(type, frame, flash) {
-    if (flash) return this.get(`ef:${type}:${frame}`, () => whiteVersion(this.enemy(type, frame, false)));
-    return this.get(`e:${type}:${frame}`, () => {
-      const d = ENEMIES[type];
-      let S = Math.ceil(d.r * 2.4) + 4;
-      S += S % 2;
-      const c = makeCanvas(S, S);
-      const x = c.getContext('2d');
-      x.translate(S / 2, S / 2);
-      x.scale(1 / ART, 1 / ART);
-      drawEnemyBody(x, d, frame ? 0.26 : 0);
-      return crispen(c, OUTLINE, true);
-    });
-  },
-
-  pickup(type, value) {
-    if (type === 'xp') {
-      const tier = value >= 50 ? 3 : value >= 10 ? 2 : value >= 3 ? 1 : 0;
-      return this.get(`p:xp:${tier}`, () => spriteFromRows(GEM_ROWS, { k: OUTLINE, w: '#ffffff', ...GEM_TIERS[tier] }));
-    }
-    return this.get(`p:${type}`, () => spriteFromRows(PICKUP_SPRITES[type].rows, PICKUP_SPRITES[type].pal));
-  },
-
-  decor(kind, variant) {
-    return this.get(`d:${kind}:${variant}`, () => {
-      const size = kind === 'bush' ? 40 : kind === 'rock' ? 26 : 12;
-      const c = makeCanvas(size, size);
-      const x = c.getContext('2d');
-      x.translate(size / 2, size / 2);
-      x.scale(1 / ART, 1 / ART);
-      if (kind === 'bush') drawBush(x, 0, 0, 22 + variant * 6);
-      else if (kind === 'rock') drawRock(x, 0, 0, 12 + variant * 4);
-      else if (kind === 'flowers') drawFlowers(x, 0, 0, variant ? 0.29 : 0.31);
-      else drawTuft(x, 0, 6);
-      return crispen(c, kind === 'tuft' || kind === 'flowers' ? null : OUTLINE, kind === 'bush' || kind === 'rock');
-    });
-  },
-
-  // Textura de grama em pixel art (repetida como padrão).
+  // Textura de grama em pixel art (repetida no chão 3D).
   grass() {
     return this.get('grass', () => {
       const S = 48;
       const c = makeCanvas(S, S);
       const x = c.getContext('2d');
-      x.fillStyle = '#2a4a2d';
+      x.fillStyle = '#3f6a35';
       x.fillRect(0, 0, S, S);
       let seed = 1337;
       const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-      for (let i = 0; i < 260; i++) {
+      for (let i = 0; i < 300; i++) {
         const r = rnd();
-        x.fillStyle = r < 0.45 ? '#2f5232' : r < 0.85 ? '#26432a' : '#36603a';
+        x.fillStyle = r < 0.45 ? '#46753a' : r < 0.85 ? '#385f30' : '#4f8242';
         x.fillRect(Math.floor(rnd() * S), Math.floor(rnd() * S), 1, 1);
       }
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 12; i++) {
         const gx = Math.floor(rnd() * S), gy = Math.floor(rnd() * S);
-        x.fillStyle = '#3d6b3e';
+        x.fillStyle = '#5a9048';
         x.fillRect(gx, gy, 1, 2);
         x.fillRect(gx + 2, gy + 1, 1, 2);
-        x.fillStyle = '#4a7d47';
+        x.fillStyle = '#6aa352';
         x.fillRect(gx + 1, gy - 1, 1, 3);
+      }
+      if (rnd() < 2) {
+        x.fillStyle = '#e8d36a';
+        x.fillRect(Math.floor(rnd() * S), Math.floor(rnd() * S), 1, 1);
+        x.fillStyle = '#e88fd0';
+        x.fillRect(Math.floor(rnd() * S), Math.floor(rnd() * S), 1, 1);
       }
       return c;
     });

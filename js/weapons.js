@@ -44,35 +44,6 @@ WEAPONS.judgment = {
       g.forEnemiesInRadius(p.x, p.y, R, (e) => g.damageEnemy(e, dmg, { src: w, knock: 70 }));
     }
   },
-  draw(w, g, ctx) {
-    const p = g.player;
-    const R = wstat(w, 'radius') * p.stats.areaMult;
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.globalAlpha = 0.1;
-    ctx.fillStyle = '#f2c94c';
-    ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
-    ctx.globalAlpha = 0.3;
-    ctx.strokeStyle = '#f2c94c'; ctx.lineWidth = 2; ctx.stroke();
-    const blades = wstat(w, 'blades');
-    for (let i = 0; i < blades; i++) {
-      ctx.save();
-      ctx.rotate(w.angle + (i * TAU) / blades);
-      ctx.globalAlpha = 0.22;
-      ctx.strokeStyle = '#fff3b0';
-      ctx.lineWidth = R * 0.5;
-      ctx.beginPath(); ctx.arc(0, 0, R * 0.62, -1.0, 0); ctx.stroke();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = '#e3e9f0';
-      ctx.beginPath();
-      ctx.moveTo(R * 0.28, -4); ctx.lineTo(R - 8, -4); ctx.lineTo(R, 0); ctx.lineTo(R - 8, 4); ctx.lineTo(R * 0.28, 4);
-      ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#f2c94c';
-      ctx.fillRect(R * 0.24, -8, 5, 16);
-      ctx.restore();
-    }
-    ctx.restore();
-  },
 };
 
 // --- Ashe: Rajada ----------------------------------------------------------
@@ -190,22 +161,6 @@ WEAPONS.singularity = {
     }
     w.zones = w.zones.filter((z) => z.t > 0);
   },
-  drawGround(w, g, ctx) {
-    const R = wstat(w, 'radius') * g.player.stats.areaMult;
-    for (const z of w.zones) {
-      const k = 1 - z.t / z.max;
-      ctx.save();
-      ctx.globalAlpha = 0.18 + 0.15 * k;
-      ctx.fillStyle = '#fff3a0';
-      ctx.beginPath(); ctx.arc(z.x, z.y, R, 0, TAU); ctx.fill();
-      ctx.globalAlpha = 0.8;
-      ctx.strokeStyle = '#fffbe0'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(z.x, z.y, R * (1 - k * 0.85), 0, TAU); ctx.stroke();
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(z.x, z.y, 6 + 4 * Math.sin(g.time * 20), 0, TAU); ctx.fill();
-      ctx.restore();
-    }
-  },
 };
 
 // --- Ahri: Orbe da Ilusão --------------------------------------------------
@@ -317,30 +272,6 @@ WEAPONS.tibbers = {
       g.burst(cx, cy, '#ffb347', 6, 120);
     }
   },
-  draw(w, g, ctx) {
-    const b = w.bear;
-    const s = (1 + (b.anim > 0 ? 0.15 : 0)) * (w.evolved ? 1.5 : 1);
-    ctx.save();
-    ctx.translate(b.x, b.y);
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.beginPath(); ctx.ellipse(0, 16, 18, 6, 0, 0, TAU); ctx.fill();
-    ctx.scale(s, s);
-    // flame aura
-    ctx.globalAlpha = 0.35 + 0.15 * Math.sin(g.time * 15);
-    ctx.fillStyle = '#ff8a3d';
-    ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU); ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#5a3a2a';
-    ctx.beginPath(); ctx.arc(-11, -13, 6, 0, TAU); ctx.arc(11, -13, 6, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.arc(0, 0, 16, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#8a6248';
-    ctx.beginPath(); ctx.ellipse(0, 5, 8, 6, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#ffcc33';
-    ctx.beginPath(); ctx.arc(-6, -4, 2.6, 0, TAU); ctx.arc(6, -4, 2.6, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#2b1a12'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(-3, 6); ctx.lineTo(3, 6); ctx.stroke();
-    ctx.restore();
-  },
 };
 
 // --- Teemo: Armadilha Venenosa ---------------------------------------------
@@ -374,20 +305,6 @@ WEAPONS.noxiousTrap = {
       }
     }
     w.shrooms = w.shrooms.filter((s) => s.life > 0);
-  },
-  drawGround(w, g, ctx) {
-    for (const s of w.shrooms) {
-      ctx.save();
-      ctx.translate(s.x, s.y);
-      ctx.globalAlpha = s.arm > 0 ? 1 : 0.55;
-      ctx.fillStyle = '#e8dcc0';
-      ctx.fillRect(-2.5, -1, 5, 7);
-      ctx.fillStyle = '#5aa02c';
-      ctx.beginPath(); ctx.arc(0, -1, 8, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = '#c8f08a';
-      ctx.beginPath(); ctx.arc(-3, -4, 1.6, 0, TAU); ctx.arc(3, -3, 1.3, 0, TAU); ctx.fill();
-      ctx.restore();
-    }
   },
 };
 

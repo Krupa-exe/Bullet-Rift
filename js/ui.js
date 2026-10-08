@@ -46,6 +46,7 @@ const UI = {
     const list = this.$('champ-list');
     list.innerHTML = '';
     const records = this.g.loadRecords();
+    this.portraits = [];
     for (const key in CHAMPIONS) {
       const c = CHAMPIONS[key];
       const w = WEAPONS[c.startWeapon];
@@ -64,11 +65,20 @@ const UI = {
           <li>${this.icon(c.ult.icon)} <b>${c.ult.name}:</b> ${c.ult.desc}</li>
         </ul>
         <div class="champ-record">${rec ? `Recorde: ${formatTime(rec.time)} · ${rec.kills} abates${rec.wins ? ` · ${rec.wins} vitória(s)` : ''}` : 'Sem recorde'}</div>`;
-      drawPortrait(card.querySelector('canvas'), key);
+      const cv = card.querySelector('canvas');
+      this.portraits.push({ cv, key });
+      World3D.renderPortrait(key, 0, false, cv);
       card.addEventListener('click', () => this.selectChampion(key));
       card.addEventListener('dblclick', () => this.g.start(key));
       list.appendChild(card);
     }
+  },
+
+  // Retratos 3D animados no menu (atualizados ~15 vezes por segundo).
+  animatePortraits(t) {
+    if (!this.portraits || t - (this.lastPortraitT || 0) < 1 / 15) return;
+    this.lastPortraitT = t;
+    for (const { cv, key } of this.portraits) World3D.renderPortrait(key, t + key.length, key === this.selected, cv);
   },
 
   selectChampion(key) {

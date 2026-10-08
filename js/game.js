@@ -24,6 +24,10 @@ class Player {
     this.hurtT = 0;
     this.facing = 0;
     this.moving = false;
+    // estado de animação
+    this.animPhase = 0;
+    this.moveBlend = 0;
+    this.castT = 0;
     this.stats = null;
     this.recalc();
     this.hp = this.stats.maxHp;
@@ -67,6 +71,7 @@ const Game = {
   init() {
     this.canvas = document.getElementById('game');
     this.ctx = this.canvas.getContext('2d');
+    World3D.init(document.getElementById('world'));
     this.grid = new SpatialGrid(64);
     this.qbuf = [];
     this.ultSource = { key: 'ult', dmgDone: 0 };
@@ -90,15 +95,10 @@ const Game = {
     this.canvas.height = Math.floor(this.h * this.dpr);
     this.canvas.style.width = this.w + 'px';
     this.canvas.style.height = this.h + 'px';
-    // Pixel art: o mundo é desenhado em um canvas de baixa resolução e ampliado
-    // por um fator inteiro (P pixels do dispositivo por pixel de arte).
-    const baseZoom = clamp(Math.min(this.w, this.h) / 760, 0.75, 1.25);
-    this.pix = Math.max(2, Math.round(ART * baseZoom * this.dpr));
-    this.zoom = this.pix / (ART * this.dpr);
-    if (!this.low) this.low = document.createElement('canvas');
-    this.low.width = Math.ceil(this.canvas.width / this.pix);
-    this.low.height = Math.ceil(this.canvas.height / this.pix);
-    this.lctx = this.low.getContext('2d');
+    // O mundo 3D é renderizado em baixa resolução e ampliado (visual de pixel art);
+    // este canvas fica por cima só com o HUD e os números de dano.
+    this.zoom = clamp(Math.min(this.w, this.h) / 760, 0.6, 1.25) * 1.7;
+    World3D.resize(this.w, this.h, this.dpr, this.zoom);
   },
 
   // -------------------------------------------------------------------------
@@ -178,8 +178,12 @@ const Game = {
   frame(t) {
     const dt = Math.min(0.05, (t - this.last) / 1000);
     this.last = t;
+    this.frameDt = dt;
     if (this.state === 'playing') this.update(dt);
-    else if (this.state === 'menu') this.menuT += dt;
+    else if (this.state === 'menu') {
+      this.menuT += dt;
+      UI.animatePortraits(this.menuT);
+    }
     this.render(dt);
     requestAnimationFrame((tt) => this.frame(tt));
   },
@@ -259,6 +263,10 @@ const Game = {
       p.y += mv.y * spd * dt;
       p.facing = Math.atan2(mv.y, mv.x);
     }
+    // animação: fase da caminhada acompanha a velocidade; transição suave parado/andando
+    p.moveBlend += ((p.moving ? 1 : 0) - p.moveBlend) * Math.min(1, dt * 10);
+    p.animPhase += dt * (spd / 15) * p.moveBlend;
+    p.castT = Math.max(0, p.castT - dt * 1.8);
     p.hp = Math.min(st.maxHp, p.hp + st.regen * dt);
     p.invuln = Math.max(0, p.invuln - dt);
     p.hurtT = Math.max(0, p.hurtT - dt);
@@ -276,6 +284,7 @@ const Game = {
       return;
     }
     p.ultCd = p.champ.ult.cd * p.stats.cdMult;
+    p.castT = 1;
     Sfx.play('ult');
   },
 
@@ -384,7 +393,7 @@ const Game = {
   },
 
   viewHalf() {
-    return { w: this.w / 2 / this.zoom, h: this.h / 2 / this.zoom };
+    return World3D.viewHalf();
   },
 
   spawnPos(angle) {
@@ -570,7 +579,7 @@ const Game = {
     p.hp -= dmg;
     this.damageTaken += dmg;
     p.invuln = 0.45;
-    p.hurtT = 0.2;
+    p.hurtT = 0.3;
     this.shake = Math.max(this.shake, 6);
     this.texts.push({ x: p.x, y: p.y - 24, text: '-' + Math.round(dmg), life: 0.7, hurt: true });
     Sfx.play('hurt');
@@ -1129,130 +1138,51 @@ const Game = {
   // Renderização
   // -------------------------------------------------------------------------
   render() {
+    const now = performance.now() / 1000;
+    World3D.render(this, now);
     const ctx = this.ctx;
-    const lc = this.lctx;
     const dpr = this.dpr;
-    const P = this.pix;
-    const lw = this.low.width, lh = this.low.height;
-    const ox = Math.floor(lw / 2), oy = Math.floor(lh / 2);
-    lc.imageSmoothingEnabled = false;
-
-    let camX, camY;
-    if (this.state === 'menu' || !this.player) {
-      camX = Math.cos(this.menuT * 0.1) * 400;
-      camY = this.menuT * 30;
-    } else {
-      const sx = this.shake > 0 ? rand(-this.shake, this.shake) * 0.5 : 0;
-      const sy = this.shake > 0 ? rand(-this.shake, this.shake) * 0.5 : 0;
-      camX = this.cam.x + sx;
-      camY = this.cam.y + sy;
-    }
-    camX = Math.round(camX / ART) * ART;
-    camY = Math.round(camY / ART) * ART;
-    lc.setTransform(1 / ART, 0, 0, 1 / ART, ox - camX / ART, oy - camY / ART);
-    const v = this.viewHalf();
-    const x0 = camX - v.w - 60, x1 = camX + v.w + 60, y0 = camY - v.h - 60, y1 = camY + v.h + 60;
-
-    drawBackground(lc, x0, y0, x1, y1);
-    if (this.state !== 'menu' && this.player) this.renderWorld(lc, camX, camY, x0, x1, y0, y1, v);
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.low, 0, 0, lw * P, lh * P);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
+    ctx.clearRect(0, 0, this.w, this.h);
     if (this.state === 'menu' || !this.player) {
-      ctx.fillStyle = 'rgba(1,10,19,0.55)';
+      ctx.fillStyle = 'rgba(1,10,19,0.45)';
       ctx.fillRect(0, 0, this.w, this.h);
       return;
     }
-
-    // Números de dano (texto nítido em fonte pixelada, sobre o mundo ampliado)
-    const toSX = (wx) => ((wx - camX) / ART + ox) * P / dpr;
-    const toSY = (wy) => ((wy - camY) / ART + oy) * P / dpr;
+    // Números de dano (texto nítido em fonte pixelada, sobre o mundo 3D)
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
-    for (const t of this.texts) {
-      ctx.globalAlpha = Math.min(1, t.life * 2.5);
-      const size = t.crit ? 24 : t.hurt ? 21 : 17;
+    for (const tx of this.texts) {
+      ctx.globalAlpha = Math.min(1, tx.life * 2.5);
+      const size = tx.crit ? 24 : tx.hurt ? 21 : 17;
       ctx.font = `${size}px VT323, monospace`;
       ctx.lineWidth = 3;
       ctx.strokeStyle = OUTLINE;
-      ctx.fillStyle = t.color || (t.hurt ? '#ff4d4d' : t.crit ? '#ffb347' : '#ffffff');
-      const sx = Math.round(toSX(t.x)), sy = Math.round(toSY(t.y));
-      ctx.strokeText(t.text, sx, sy);
-      ctx.fillText(t.text, sx, sy);
+      ctx.fillStyle = tx.color || (tx.hurt ? '#ff4d4d' : tx.crit ? '#ffb347' : '#ffffff');
+      const sp = World3D.toScreen(tx.x, tx.y, 34);
+      const sx = Math.round(sp.x), sy = Math.round(sp.y);
+      ctx.strokeText(tx.text, sx, sy);
+      ctx.fillText(tx.text, sx, sy);
     }
     ctx.globalAlpha = 1;
-    HUD.draw(ctx, this);
-  },
-
-  renderWorld(ctx, camX, camY, x0, x1, y0, y1, v) {
-    const p = this.player;
-    const inView = (o, m = 40) => o.x > x0 - m && o.x < x1 + m && o.y > y0 - m && o.y < y1 + m;
-
-    for (const w of p.weapons) if (WEAPONS[w.key].drawGround) WEAPONS[w.key].drawGround(w, this, ctx);
-    if (p.stats.burn > 0) {
-      const R = SUNFIRE_RADIUS * p.stats.areaMult;
-      ctx.save();
-      ctx.globalAlpha = 0.12 + 0.04 * (Math.floor(this.time * 6) & 1);
-      ctx.fillStyle = '#ff7a2a';
-      ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, TAU); ctx.fill();
-      ctx.restore();
-    }
-    for (const pk of this.pickups) if (inView(pk)) drawPickup(ctx, pk, this.time);
-
-    // Inimigos (chefes por cima)
-    for (const e of this.enemies) if (!e.def.boss && inView(e, e.r * 2)) drawEnemy(ctx, e, this.time);
-    for (const e of this.enemies) if (e.def.boss) drawEnemy(ctx, e, this.time);
-
-    for (const w of p.weapons) if (WEAPONS[w.key].draw) WEAPONS[w.key].draw(w, this, ctx);
-
-    // Jogador
-    if (p.baronT > 0 || p.elderT > 0) {
-      ctx.save();
-      ctx.globalAlpha = 0.25 + 0.1 * (Math.floor(this.time * 4) & 1);
-      ctx.fillStyle = p.baronT > 0 ? '#b46bff' : '#7fe8ff';
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 10, 0, TAU); ctx.fill();
-      ctx.restore();
-    }
-    const blink = p.invuln > 0 && Math.floor(this.time * 20) % 2 === 0;
-    if (!blink) drawChampion(ctx, p.key, p.x, p.y, p.r, p.facing, this.time, p.moving);
-    if (p.hurtT > 0) {
-      ctx.save(); ctx.globalAlpha = Math.min(0.6, p.hurtT * 3); ctx.fillStyle = '#ff3030';
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 2, 0, TAU); ctx.fill(); ctx.restore();
-    }
-    // Barra de vida sob o jogador
-    const bx = Math.round(p.x / ART) * ART - 20, by = Math.round(p.y / ART) * ART + 34;
-    ctx.fillStyle = OUTLINE;
-    ctx.fillRect(bx - ART, by - ART, 40 + ART * 2, ART * 4);
-    ctx.fillStyle = '#5a1a1a';
-    ctx.fillRect(bx, by, 40, ART * 2);
-    ctx.fillStyle = '#4ee36a';
-    ctx.fillRect(bx, by, Math.round((20 * Math.max(0, p.hp)) / p.stats.maxHp) * ART, ART * 2);
-
-    for (const pr of this.projectiles) if (inView(pr)) drawProjectile(ctx, pr, this.time);
-    for (const b of this.enemyProjectiles) if (inView(b)) drawEnemyProjectile(ctx, b);
-    for (const fx of this.effects) drawEffect(ctx, fx, this);
-    for (const pt of this.particles) {
-      ctx.globalAlpha = Math.max(0, pt.life / pt.max);
-      ctx.fillStyle = pt.color;
-      ctx.fillRect(Math.round(pt.x / ART) * ART, Math.round(pt.y / ART) * ART, ART * (pt.size > 3 ? 2 : 1), ART * (pt.size > 3 ? 2 : 1));
-    }
-    ctx.globalAlpha = 1;
-
     // Indicadores de chefes / elites fora da tela
+    const p = this.player;
+    const v = this.viewHalf();
     for (const e of this.enemies) {
-      if (!(e.def.boss || e.def.elite) || inView(e, -60)) continue;
+      if (!(e.def.boss || e.def.elite)) continue;
+      if (Math.abs(e.x - p.x) < v.w && Math.abs(e.y - p.y) < v.h) continue;
       const a = Math.atan2(e.y - p.y, e.x - p.x);
-      const ix = clamp(p.x + Math.cos(a) * 9999, camX - v.w + 24, camX + v.w - 24);
-      const iy = clamp(p.y + Math.sin(a) * 9999, camY - v.h + 70, camY + v.h - 90);
+      const ix = clamp(this.w / 2 + Math.cos(a) * this.w, 24, this.w - 24);
+      const iy = clamp(this.h / 2 + Math.sin(a) * this.h, 100, this.h - 90);
       ctx.save();
       ctx.translate(ix, iy); ctx.rotate(a);
       ctx.fillStyle = e.def.boss ? '#d78aff' : '#e8b04a';
-      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.fill();
+      ctx.strokeStyle = OUTLINE; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -9); ctx.lineTo(-8, 9); ctx.closePath();
+      ctx.stroke(); ctx.fill();
       ctx.restore();
     }
+    HUD.draw(ctx, this);
   },
 };
 

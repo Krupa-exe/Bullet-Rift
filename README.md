@@ -60,7 +60,7 @@ Abra com `B` a qualquer momento (o jogo pausa). O ouro cai dos inimigos e aument
 
 ### Visual
 
-Pixel art: o mundo é desenhado num canvas de baixa resolução e ampliado sem suavização. Os campeões são sprites detalhados de 24x34 pixels, pintados parte por parte com contorno e sombreamento em 3 tons (`js/champion-art.js`); inimigos, cenário e ícones são gerados a partir de desenhos vetoriais convertidos em pixel art com contorno.
+**3D pixelado.** O mundo é 3D de verdade (Three.js), com câmera inclinada, luz, sombras e sombreamento em faixas (toon). Ele é renderizado em baixa resolução (cerca de 270 pixels de altura) e ampliado sem suavização. Um shader desenha contornos a partir da profundidade, reduz a paleta e aplica dithering, e o resultado fica com cara de pixel art. Os personagens são modelos low-poly feitos de peças simples, com animação procedural contínua: andar, girar em qualquer direção, ultimate e reação a dano. Os inimigos usam instancing, para centenas caberem na tela ao mesmo tempo. O HUD e as telas continuam em pixel art 2D, por cima do mundo.
 
 ### Inimigos e eventos
 
@@ -84,11 +84,12 @@ index.html        telas (menu, nível, baú, pausa, fim de jogo)
 css/style.css     visual da interface (paleta hextech dourado/azul-petróleo)
 js/utils.js       utilidades e grade espacial para colisões
 js/audio.js       efeitos sonoros sintetizados com WebAudio
-js/sprites.js     sprites em pixel art, cache e ícones pixelados
-js/champion-art.js  sprites detalhados dos campeões (24x34, sombreamento em 3 tons)
+js/vendor/three.min.js  Three.js r149 (licença MIT, em js/vendor/three.LICENSE)
+js/sprites.js     textura do chão e ícones pixelados
+js/models3d.js    modelos 3D: campeões (rig animado), peças dos inimigos, chefes, Tibbers
+js/world3d.js     renderização 3D pixelada: câmera, luzes, shader de contorno/paleta, instancing
 js/data.js        campeões, itens, inimigos, ondas e eventos
 js/weapons.js     habilidades automáticas e ultimates
-js/render.js      desenho procedural de cenário, campeões, inimigos e efeitos
 js/hud.js         interface durante a partida (barras, inventário, anúncios)
 js/input.js       teclado e joystick virtual para toque
 js/ui.js          telas em HTML
