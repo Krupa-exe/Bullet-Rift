@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Bullet Rift</title>
+  <meta name="description" content="Um jogo no estilo Vampire Survivors com temática de League of Legends.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Menu / seleção de campeão -->
+  <div id="menu" class="screen">
+    <div class="menu-inner">
+      <h1 class="logo">BULLET <span>RIFT</span></h1>
+      <p class="tagline">Sobreviva 15 minutos na Fenda. Enfrente ondas de tropas, monstros da selva, o Dragão e o Barão Na'Shor.</p>
+      <h2 class="section-title">Escolha seu campeão</h2>
+      <div id="champ-list" class="champ-list"></div>
+      <button id="btn-start" class="btn primary" disabled>Selecione um campeão</button>
+      <div class="controls">
+        <div><kbd>WASD</kbd>/<kbd>Setas</kbd> mover</div>
+        <div><kbd>Espaço</kbd>/<kbd>R</kbd> ultimate</div>
+        <div><kbd>F</kbd>/<kbd>Shift</kbd> Flash</div>
+        <div><kbd>Esc</kbd>/<kbd>P</kbd> pausar</div>
+        <div><kbd>M</kbd> som</div>
+        <div>📱 No celular: arraste para mover</div>
+      </div>
+      <button id="btn-mute" class="btn small">🔊 Som ligado</button>
+      <p class="disclaimer">Projeto de fã sem fins lucrativos. League of Legends é marca registrada da Riot Games, Inc. Este jogo não é afiliado nem endossado pela Riot Games.</p>
+    </div>
+  </div>
+
+  <!-- Subir de nível -->
+  <div id="levelup" class="screen hidden">
+    <div class="panel">
+      <h2 id="levelup-title" class="panel-title">Subiu de nível!</h2>
+      <p class="panel-sub">Escolha uma melhoria</p>
+      <div id="choices" class="choices"></div>
+      <button id="btn-reroll" class="btn small">Rerrolar</button>
+    </div>
+  </div>
+
+  <!-- Baú Hextec -->
+  <div id="chest" class="screen hidden">
+    <div class="panel">
+      <h2 class="panel-title hextech">Baú Hextec</h2>
+      <p class="panel-sub">Você obteve:</p>
+      <div id="chest-items" class="chest-items"></div>
+      <button id="btn-chest-ok" class="btn primary">Continuar</button>
+    </div>
+  </div>
+
+  <!-- Pausa -->
+  <div id="pause" class="screen hidden">
+    <div class="panel wide">
+      <h2 class="panel-title">Pausado</h2>
+      <div id="pause-build"></div>
+      <div class="btn-row">
+        <button id="btn-resume" class="btn primary">Continuar</button>
+        <button id="btn-quit" class="btn">Desistir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fim de jogo -->
+  <div id="gameover" class="screen hidden">
+    <div class="panel wide">
+      <h2 id="go-title">DERROTA</h2>
+      <p id="go-sub" class="panel-sub"></p>
+      <div id="go-stats"></div>
+      <div class="btn-row">
+        <button id="btn-endless" class="btn primary hidden">Modo infinito</button>
+        <button id="btn-retry" class="btn primary">Jogar de novo</button>
+        <button id="btn-menu" class="btn">Trocar campeão</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botões de toque -->
+  <div id="touch-buttons" class="hidden">
+    <button id="t-pause" aria-label="Pausar">❚❚</button>
+    <button id="t-flash" aria-label="Flash">⚡</button>
+    <button id="t-ult" aria-label="Ultimate">R</button>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/weapons.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/hud.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
