@@ -92,8 +92,8 @@ const Game = {
     this.canvas.style.height = this.h + 'px';
     // Pixel art: o mundo é desenhado em um canvas de baixa resolução e ampliado
     // por um fator inteiro (P pixels do dispositivo por pixel de arte).
-    const baseZoom = clamp(Math.min(this.w, this.h) / 760, 0.6, 1.25);
-    this.pix = Math.max(2, Math.round(ART * baseZoom * this.dpr * 1.3));
+    const baseZoom = clamp(Math.min(this.w, this.h) / 760, 0.75, 1.25);
+    this.pix = Math.max(2, Math.round(ART * baseZoom * this.dpr));
     this.zoom = this.pix / (ART * this.dpr);
     if (!this.low) this.low = document.createElement('canvas');
     this.low.width = Math.ceil(this.canvas.width / this.pix);
@@ -1223,7 +1223,7 @@ const Game = {
       ctx.beginPath(); ctx.arc(p.x, p.y, p.r + 2, 0, TAU); ctx.fill(); ctx.restore();
     }
     // Barra de vida sob o jogador
-    const bx = Math.round(p.x / ART) * ART - 20, by = Math.round(p.y / ART) * ART + p.r + 8;
+    const bx = Math.round(p.x / ART) * ART - 20, by = Math.round(p.y / ART) * ART + 34;
     ctx.fillStyle = OUTLINE;
     ctx.fillRect(bx - ART, by - ART, 40 + ART * 2, ART * 4);
     ctx.fillStyle = '#5a1a1a';

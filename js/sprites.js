@@ -17,12 +17,28 @@ function hexRgb(h) {
 }
 
 // Turns an antialiased drawing into crisp pixel art: hard alpha plus a 1px dark outline.
-function crispen(c, outline = OUTLINE) {
+function crispen(c, outline = OUTLINE, bevel = false) {
   const x = c.getContext('2d');
   const w = c.width, h = c.height;
   const img = x.getImageData(0, 0, w, h);
   const d = img.data;
   for (let i = 3; i < d.length; i += 4) d[i] = d[i] >= 100 ? 255 : 0;
+  if (bevel) {
+    // Realce nas bordas de cima/esquerda e sombra nas de baixo/direita.
+    const a = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3] ? 1 : 0;
+    for (let y = 0; y < h; y++) {
+      for (let xx = 0; xx < w; xx++) {
+        const i = y * w + xx;
+        if (!a[i]) continue;
+        const lit = (y > 0 && !a[i - w]) || (xx > 0 && !a[i - 1]);
+        const dark = (y < h - 1 && !a[i + w]) || (xx < w - 1 && !a[i + 1]) || (y < h - 2 && !a[i + 2 * w]);
+        const k = dark ? 0.72 : lit ? 1.25 : 1;
+        if (k === 1) continue;
+        for (let ch = 0; ch < 3; ch++) d[i * 4 + ch] = Math.min(255, Math.round(d[i * 4 + ch] * k + (k > 1 ? 18 : 0)));
+      }
+    }
+  }
   if (outline) {
     const [or, og, ob] = hexRgb(outline);
     const solid = new Uint8Array(w * h);
@@ -66,101 +82,6 @@ function spriteFromRows(rows, pal) {
   });
   return c;
 }
-
-// ---------------------------------------------------------------------------
-// Campeões desenhados à mão (16x16, virados para a direita).
-// Linhas 14 e 15 trocam no segundo quadro para animar a caminhada.
-// ---------------------------------------------------------------------------
-const CHAMP_SPRITES = {
-  garen: {
-    pal: { k: OUTLINE, h: '#6b4a2b', s: '#f1c9a5', e: '#1b1b2b', r: '#c23b3b', g: '#f2c94c', b: '#3d6bd6', B: '#284a9c', w: '#e3e9f0' },
-    rows: [
-      '......kkkk......',
-      '.....khhhhk.....',
-      '....khhhhhhk....',
-      '....khssssssk...',
-      '....kssssesek...',
-      '....kssssssk....',
-      '..rrkggkkggk....',
-      '..rkgggbbgggk...',
-      '..rkbbbgbbbk.ww.',
-      '..rkbbbgbbskwwww',
-      '..rkBBBgBBBkg...',
-      '..rkbbbbbbbk....',
-      '...kBBBBBBBk....',
-      '....kbbkbbk.....',
-      '....kBk.kBk.....',
-      '....kkk.kkk.....',
-    ],
-    alt: { 14: '...kBk...kBk....', 15: '...kkk...kkk....' },
-  },
-  ashe: {
-    pal: { k: OUTLINE, H: '#2f5d8a', s: '#f1c9a5', e: '#1b1b2b', W: '#e8f4ff', c: '#8fd3ff', b: '#5aa9e6', B: '#2e6da4', w: '#ffffff', i: '#bdf0ff', d: '#6b4a2b' },
-    rows: [
-      '......kkkk......',
-      '.....kHHHHk.....',
-      '....kHHHHHHk....',
-      '....kHssssHk....',
-      '....kHssesek....',
-      '....kWssssk.....',
-      '...kcckkkkck.i..',
-      '..kcbbbbbbbk.ki.',
-      '..kcbbwwbbbk..i.',
-      '..kcbbbbbbskiiii',
-      '..kcbbbbbbbk..i.',
-      '..kcBBBBBBBk.ki.',
-      '...kBBBBBBBk.i..',
-      '....kddkddk.....',
-      '....kdk.kdk.....',
-      '....kkk.kkk.....',
-    ],
-    alt: { 14: '...kdk...kdk....', 15: '...kkk...kkk....' },
-  },
-  lux: {
-    pal: { k: OUTLINE, Y: '#ffe27a', s: '#f1c9a5', e: '#2a3b8f', w: '#f5f1e0', g: '#ffd84d', o: '#fff4a8', O: '#ffd84d', t: '#e6d6a8', d: '#c8aa6e' },
-    rows: [
-      '......kkkk......',
-      '.....kYYYYk.....',
-      '....kYYYYYYk....',
-      '...kYYssssYk....',
-      '...kYsssesek....',
-      '...kYssssssk....',
-      '...kYkwwwwk..o..',
-      '..kwwwgwwwwk.oOo',
-      '..kwwgggwwwk..t.',
-      '..kwwwgwwwsk.t..',
-      '..kwwwgwwwkt....',
-      '..kwwwgwwwwk....',
-      '..kwwwwwwwwk....',
-      '...kkddkddkk....',
-      '....kdk.kdk.....',
-      '....kkk.kkk.....',
-    ],
-    alt: { 14: '...kdk...kdk....', 15: '...kkk...kkk....' },
-  },
-  jinx: {
-    pal: { k: OUTLINE, H: '#2d7fd6', s: '#f3d6c8', p: '#ff4fa3', m: '#6c7a89', P: '#ff4fa3', b: '#3a4a8a' },
-    rows: [
-      '......kkkk......',
-      '.....kHHHHk.....',
-      '....kHHHHHHk....',
-      '...HkHssssHk....',
-      '..HHksspspk.....',
-      '..H.kssssk......',
-      '.H..kpkkpk.mmmm.',
-      '.H.kpppppkmmmmmP',
-      'H..ksssssksmmmm.',
-      'H..kbbbbbk......',
-      'H..kbbbbbk......',
-      '.H.ksskssk......',
-      '...ksskssk......',
-      '...ksskssk......',
-      '...kpk.kpk......',
-      '...kkk.kkk......',
-    ],
-    alt: { 14: '..kpk...kpk.....', 15: '..kkk...kkk.....' },
-  },
-};
 
 // ---------------------------------------------------------------------------
 // Coletáveis (desenhados à mão)
@@ -217,12 +138,7 @@ const Sprites = {
   },
 
   champ(key, frame) {
-    return this.get(`c:${key}:${frame}`, () => {
-      const def = CHAMP_SPRITES[key];
-      const rows = def.rows.slice();
-      if (frame && def.alt) for (const i in def.alt) rows[i] = def.alt[i];
-      return spriteFromRows(rows, def.pal);
-    });
+    return this.get(`c:${key}:${frame}`, () => CHAMP_ART[key](frame));
   },
 
   // Inimigos: desenho vetorial convertido em pixel art (2 quadros + versão branca para dano).
@@ -237,7 +153,7 @@ const Sprites = {
       x.translate(S / 2, S / 2);
       x.scale(1 / ART, 1 / ART);
       drawEnemyBody(x, d, frame ? 0.26 : 0);
-      return crispen(c);
+      return crispen(c, OUTLINE, true);
     });
   },
 
@@ -260,7 +176,7 @@ const Sprites = {
       else if (kind === 'rock') drawRock(x, 0, 0, 12 + variant * 4);
       else if (kind === 'flowers') drawFlowers(x, 0, 0, variant ? 0.29 : 0.31);
       else drawTuft(x, 0, 6);
-      return crispen(c, kind === 'tuft' || kind === 'flowers' ? null : OUTLINE);
+      return crispen(c, kind === 'tuft' || kind === 'flowers' ? null : OUTLINE, kind === 'bush' || kind === 'rock');
     });
   },
 

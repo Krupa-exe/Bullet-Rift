@@ -115,10 +115,13 @@ img.px-icon.sm { width: 18px; height: 18px; }
   cursor: pointer;
   font: inherit;
   transition: transform 0.08s steps(2);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 .champ-card:hover { transform: translate(-2px, -2px); box-shadow: inset 0 0 0 2px var(--gold), 6px 6px 0 var(--ink); }
 .champ-card.selected { box-shadow: inset 0 0 0 3px var(--teal), 6px 6px 0 var(--ink); background: #142228; }
-.champ-card canvas { display: block; margin: 0 auto 8px; width: 96px; height: 96px; image-rendering: pixelated; }
+.champ-card canvas { display: block; margin: 0 auto 8px; width: 120px; height: 136px; image-rendering: pixelated; }
 .champ-name { font-family: var(--px-title); font-size: 16px; color: var(--gold-light); text-align: center; margin-bottom: 6px; }
 .champ-title { color: var(--gold); font-size: 18px; text-align: center; margin-bottom: 10px; }
 .champ-desc { font-size: 20px; margin: 0 0 10px; line-height: 1.35; }
@@ -315,7 +318,7 @@ kbd {
 @media (max-width: 600px) {
   .champ-list { grid-template-columns: 1fr 1fr; gap: 10px; }
   .champ-card { padding: 10px 8px; }
-  .champ-card canvas { width: 72px; height: 72px; }
+  .champ-card canvas { width: 90px; height: 102px; }
   .champ-name { font-size: 16px; }
   .champ-title { font-size: 16px; }
   .champ-desc { font-size: 17px; text-align: center; }

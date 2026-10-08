@@ -79,17 +79,22 @@ function drawFlowers(ctx, x, y, h) {
 // ---------------------------------------------------------------------------
 // Campeões
 // ---------------------------------------------------------------------------
+// Linha do sprite do campeão que fica na posição do personagem (meio do tronco).
+const CHAMP_ANCHOR_Y = 18;
+
 function drawChampion(ctx, key, x, y, r, ang, t, moving) {
-  const frame = moving ? Math.floor(t * 8) & 1 : 0;
+  const frame = moving ? Math.floor(t * 9) % CHAMP_FRAMES : 0;
   const spr = Sprites.champ(key, frame);
   const W = spr.width * ART, H = spr.height * ART;
   const px = Math.round(x / ART) * ART, py = Math.round(y / ART) * ART;
+  const top = py - CHAMP_ANCHOR_Y * ART;
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillRect(px - 12, py + H / 2 - 4, 24, 6);
+  ctx.fillRect(px - 14, top + 30 * ART, 28, ART * 3);
+  ctx.fillRect(px - 10, top + 29 * ART, 20, ART * 5);
   ctx.save();
-  ctx.translate(px, py - (moving && frame ? ART : 0));
+  ctx.translate(px, top);
   if (Math.cos(ang) < -0.01) ctx.scale(-1, 1);
-  ctx.drawImage(spr, -W / 2, -H / 2, W, H);
+  ctx.drawImage(spr, -W / 2, 0, W, H);
   ctx.restore();
 }
 
@@ -99,7 +104,7 @@ function drawPortrait(canvas, key) {
   const x = canvas.getContext('2d');
   x.imageSmoothingEnabled = false;
   x.clearRect(0, 0, canvas.width, canvas.height);
-  const s = Math.floor(Math.min(canvas.width, canvas.height) / spr.width);
+  const s = Math.max(1, Math.floor(Math.min(canvas.width / spr.width, canvas.height / spr.height)));
   x.drawImage(spr, (canvas.width - spr.width * s) / 2, (canvas.height - spr.height * s) / 2, spr.width * s, spr.height * s);
 }
 

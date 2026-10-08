@@ -54,7 +54,7 @@ const UI = {
       card.className = 'champ-card';
       card.dataset.key = key;
       card.innerHTML = `
-        <canvas width="96" height="96"></canvas>
+        <canvas width="120" height="136"></canvas>
         <div class="champ-name">${c.name}</div>
         <div class="champ-title">${c.title} · ${c.role}</div>
         <p class="champ-desc">${c.desc}</p>

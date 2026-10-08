@@ -60,7 +60,7 @@ Abra com `B` a qualquer momento (o jogo pausa). O ouro cai dos inimigos e aument
 
 ### Visual
 
-Pixel art: o mundo é desenhado num canvas de baixa resolução e ampliado sem suavização. Os campeões são sprites feitos à mão (`js/sprites.js`); inimigos, cenário e ícones são gerados a partir de desenhos vetoriais convertidos em pixel art com contorno.
+Pixel art: o mundo é desenhado num canvas de baixa resolução e ampliado sem suavização. Os campeões são sprites detalhados de 24x34 pixels, pintados parte por parte com contorno e sombreamento em 3 tons (`js/champion-art.js`); inimigos, cenário e ícones são gerados a partir de desenhos vetoriais convertidos em pixel art com contorno.
 
 ### Inimigos e eventos
 
@@ -85,6 +85,7 @@ css/style.css     visual da interface (paleta hextech dourado/azul-petróleo)
 js/utils.js       utilidades e grade espacial para colisões
 js/audio.js       efeitos sonoros sintetizados com WebAudio
 js/sprites.js     sprites em pixel art, cache e ícones pixelados
+js/champion-art.js  sprites detalhados dos campeões (24x34, sombreamento em 3 tons)
 js/data.js        campeões, itens, inimigos, ondas e eventos
 js/weapons.js     habilidades automáticas e ultimates
 js/render.js      desenho procedural de cenário, campeões, inimigos e efeitos
